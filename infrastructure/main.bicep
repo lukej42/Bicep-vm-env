@@ -1,6 +1,60 @@
 param location string = resourceGroup().location
 param environment string
 param appName string
+
+resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
+  name: 'sharedVNet'
+  location: location
+  properties: {
+    addressSpace: {
+      addressPrefixes: ['10.0.0.0/16']
+    }
+    subnets: [
+      {
+        name: 'sharedSubnet'
+        properties: {
+          addressPrefix: '10.0.1.0/24'
+        }
+      }
+    ]
+  }
+}
+resource publicIp1 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
+  name: 'vm1-ip'
+  location: location
+  sku: { name: 'Basic' }
+  properties: { publicIPAllocationMethod: 'Dynamic' }
+}
+
+resource publicIp2 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
+  name: 'vm2-ip'
+  location: location
+  sku: { name: 'Basic' }
+  properties: { publicIPAllocationMethod: 'Dynamic' }
+}
+
+resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
+  name: 'sharedNSG'
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'RDP'
+        properties: {
+          priority: 1000
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '3389'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+    ]
+  }
+}
+
 module storage './modules/storage.bicep' = {
   name: 'storageDeploy'
   params: {
@@ -39,13 +93,29 @@ module keyvault './modules/keyvault.bicep' = {
     location: location
   }
 }
-module vm './modules/vm.bicep' = {
-  name: 'vmdeployljg'
+module vm1 './modules/vm.bicep' = {
+  name: 'vmdeploy1'
   params: {
-    adminUsername: 'ljg'
-    adminPassword: 'Minoandruby42!!!'
+    vmName: '<vmname>'
+    adminUsername: '<username>'
+    adminPassword: '<password>'
     location: location
-    vmName: 'ljvm'
+    subnetId: vnet.properties.subnets[0].id
+    publicIpId: publicIp1.id
+    nsgId: nsg.id
+  }
+}
+
+module vm2 './modules/vm.bicep' = {
+  name: 'vmdeploy2'
+  params: {
+    vmName: '<vmname2>'
+    adminUsername: '<username>'
+    adminPassword: '<password>'
+    location: location
+    subnetId: vnet.properties.subnets[0].id
+    publicIpId: publicIp2.id
+    nsgId: nsg.id
   }
 }
 

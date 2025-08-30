@@ -1,81 +1,20 @@
-@description('Location for all resources')
 param location string = resourceGroup().location
-
-@description('Admin username for the VM')
 param adminUsername string
-
 @secure()
-@description('Admin password for the VM')
 param adminPassword string
+param vmName string
 
-@description('Name of the VM')
-param vmName string = 'myVM'
+@description('Subnet resource ID')
+param subnetId string
 
-var vnetName = 'myVNet'
-var subnetName = 'mySubnet'
-var publicIpName = 'myPublicIP'
-var nsgName = 'myNSG'
-var nicName = 'myNIC'
+@description('Public IP resource ID')
+param publicIpId string
 
-// Virtual Network
-resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
-  name: vnetName
-  location: location
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '10.0.0.0/16'
-      ]
-    }
-    subnets: [
-      {
-        name: subnetName
-        properties: {
-          addressPrefix: '10.0.1.0/24'
-        }
-      }
-    ]
-  }
-}
+@description('NSG resource ID')
+param nsgId string
 
-// Public IP
-resource publicIp 'Microsoft.Network/publicIPAddresses@2023-05-01' = {
-  name: publicIpName
-  location: location
-  sku: {
-    name: 'Basic'
-  }
-  properties: {
-    publicIPAllocationMethod: 'Dynamic'
-  }
-}
-
-// Network Security Group
-resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
-  name: nsgName
-  location: location
-  properties: {
-    securityRules: [
-      {
-        name: 'RDP'
-        properties: {
-          priority: 1000
-          direction: 'Inbound'
-          access: 'Allow'
-          protocol: 'Tcp'
-          sourcePortRange: '*'
-          destinationPortRange: '3389'
-          sourceAddressPrefix: '*'
-          destinationAddressPrefix: '*'
-        }
-      }
-    ]
-  }
-}
-
-// NIC
 resource nic 'Microsoft.Network/networkInterfaces@2023-05-01' = {
-  name: nicName
+  name: '${vmName}-nic'
   location: location
   properties: {
     ipConfigurations: [
@@ -83,21 +22,20 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-05-01' = {
         name: 'ipconfig1'
         properties: {
           subnet: {
-            id: vnet.properties.subnets[0].id
+            id: subnetId
           }
           publicIPAddress: {
-            id: publicIp.id
+            id: publicIpId
           }
         }
       }
     ]
     networkSecurityGroup: {
-      id: nsg.id
+      id: nsgId
     }
   }
 }
 
-// Virtual Machine
 resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
   name: vmName
   location: location
